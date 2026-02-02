@@ -1,23 +1,21 @@
 from pathlib import Path
-import zipfile
 
 from flowweave import FlowWeaveTask, Result
 
 from .file_system import FileSystem
 
-class Modify(FileSystem):
+class Replace(FileSystem):
     def operation_init(self):
-        self.files = None
-        self.from_str = None
-        self.to_str = None
+        self.replace = None
 
     def operation(self):
         result = Result.SUCCESS
         self.message(f"source : {self.source_dir}")
 
-        files = self.files if isinstance(self.files, list) else [self.files]
+        files = self.replace.get("files", [])
+        files = files if isinstance(files, list) else [files]
         for file in files:
-            self.replace_in_file(self.source_dir, file, self.from_str, self.to_str)
+            self.replace_in_file(self.source_dir, file, self.replace.get("from_str"), self.replace.get("to_str"))
             self.message(f"modify : {file}")
 
         return result
@@ -42,4 +40,4 @@ class Modify(FileSystem):
         return True
 
 class Task(FlowWeaveTask):
-    runner = Modify
+    runner = Replace

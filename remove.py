@@ -19,7 +19,6 @@ class Remove(FileSystem):
     def operation(self):
         result = Result.SUCCESS
         self.message(f"source : {self.source_dir}")
-        self.message(f"export : {self.export_dir}")
 
         files, folders = self.get_target()
         for file in files:
@@ -50,9 +49,6 @@ class Remove(FileSystem):
         return False
 
     def get_target(self):
-        self.message(f"source : {self.source_dir}")
-        self.message(f"export : {self.export_dir}")
-
         files = self.remove.get("files", [])
         folders = self.remove.get("folders", [])
         self.message(f"remove files : {files}")

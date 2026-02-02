@@ -14,14 +14,12 @@ class Unzip(FileSystem):
         self.message(f"source : {self.source_dir}")
         self.message(f"export : {self.export_dir}")
 
-        export_dir = self.export_dir if isinstance(self.export_dir, list) else [self.export_dir]
-
         if self.zips:
             zips = self.zips if isinstance(self.zips, list) else [self.zips]
         else:
             zips = self.prev_future.get("data", {}).get("zips", [])
 
-        for dir in export_dir:
+        for dir in self.export_dir:
             for zip in zips:
                 dst_root = self.unzip_file_from_source(self.source_dir, dir, zip)
                 self.message(f"unzip : {dst_root}")

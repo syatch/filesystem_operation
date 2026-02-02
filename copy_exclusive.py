@@ -1,4 +1,3 @@
-import re
 from pathlib import Path
 import shutil
 from enum import IntEnum
@@ -21,9 +20,7 @@ class CopyExclusive(FileSystem):
         self.message(f"export : {self.export_dir}")
 
         files, folders = self.get_target()
-
-        export_dir = self.export_dir if isinstance(self.export_dir, list) else [self.export_dir]
-        for dir in export_dir:
+        for dir in self.export_dir:
             self.copy_not_matched(self.source_dir, dir, files, folders)
 
         return result

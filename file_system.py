@@ -36,3 +36,6 @@ class FileSystem(FlowWeaveTaskRunner):
                 self.export_dir = self.prev_future.get("data", {}).get("source_dir")
             elif "pre_export" == self.export_dir:
                 self.export_dir = self.prev_future.get("data", {}).get("export_dir")
+
+        if not isinstance(self.export_dir, list):
+            self.export_dir = [self.export_dir] if self.export_dir else []

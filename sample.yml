@@ -27,13 +27,14 @@ file_system_rm:
       folders:
         - <target folder>
 
-file_system_mod:
+file_system_rep:
   option:
     source_dir: <source dir>
-    files:
-      - <target file>
-    from_str: <string>
-    to_str: <string>
+    replace:
+      files:
+        - <target file>
+      from_str: <string>
+      to_str: <string>
   # when replace lines
   # from: |
   #   <line 1>

@@ -14,8 +14,7 @@ class Zip(FileSystem):
         self.message(f"source : {self.source_dir}")
         self.message(f"export : {self.export_dir}")
 
-        export_dir = self.export_dir if isinstance(self.export_dir, list) else [self.export_dir]
-        for dir in export_dir:
+        for dir in self.export_dir:
             zip_path = self.zip_source_dir(self.source_dir, dir)
             self.message(f"zip : {zip_path}")
 
