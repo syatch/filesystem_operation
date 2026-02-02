@@ -5,6 +5,9 @@ op:
   file_system_cp_exclusive:
     script: copy_exclusive
 
+  file_system_mod:
+    script: modify
+
   file_system_rm:
     script: remove
 
