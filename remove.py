@@ -6,6 +6,7 @@ from typing import Tuple
 from flowweave import FlowWeaveResult
 
 from .file_system import FileSystem
+from .lock_manager import get_path_lock
 
 class RemoveMode(IntEnum):
     FILE = 0
@@ -21,11 +22,12 @@ class Remove(FileSystem):
         result = FlowWeaveResult.SUCCESS
         self.message(f"source : {self.source_dir}")
 
-        files, folders = self.get_target()
-        for file in files:
-            self.delete_path_in_source(self.source_dir, file, RemoveMode.FILE)
-        for folder in folders:
-            self.delete_path_in_source(self.source_dir, folder, RemoveMode.FOLDER)
+        for source_dir in self.source_dir:
+            files, folders = self.get_target()
+            for file in files:
+                self.delete_path_in_source(source_dir, file, RemoveMode.FILE)
+            for folder in folders:
+                self.delete_path_in_source(source_dir, folder, RemoveMode.FOLDER)
 
         return result
 
@@ -39,13 +41,21 @@ class Remove(FileSystem):
         if not target.exists():
             return False
 
-        if mode == RemoveMode.FILE and target.is_file():
-            target.unlink()
-            return True
+        lock = get_path_lock(target)
+        with lock:
+            try:
+                if mode == RemoveMode.FILE and target.is_file():
+                    target.unlink(missing_ok=True)
+                    self.message(f"deleted file: {target}")
+                    return True
 
-        if mode == RemoveMode.FOLDER and target.is_dir():
-            shutil.rmtree(target)
-            return True
+                if mode == RemoveMode.FOLDER and target.is_dir():
+                    shutil.rmtree(target, ignore_errors=False)
+                    self.message(f"deleted folder: {target}")
+                    return True
+            except Exception as e:
+                self.message(f"failed to delete {target}: {e}")
+                return False
 
         return False
 

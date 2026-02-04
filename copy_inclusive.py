@@ -6,6 +6,7 @@ from typing import Tuple
 from flowweave import FlowWeaveResult
 
 from .file_system import FileSystem
+from .lock_manager import get_path_lock
 
 class CopyMode(IntEnum):
     FILE = 0
@@ -21,11 +22,12 @@ class CopyInclusive(FileSystem):
         self.message(f"export : {self.export_dir}")
 
         files, folders = self.get_target()
-        for dir in self.export_dir:
-            for file in files:
-                self.copy_glob_matched(self.source_dir, dir, file, CopyMode.FILE)
-            for folder in folders:
-                self.copy_glob_matched(self.source_dir, dir, folder, CopyMode.FOLDER)
+        for source_dir in self.source_dir:
+            for export_dir in self.export_dir:
+                for file in files:
+                    self.copy_glob_matched(source_dir, export_dir, file, CopyMode.FILE)
+                for folder in folders:
+                    self.copy_glob_matched(source_dir, export_dir, folder, CopyMode.FOLDER)
 
         return result
 
@@ -34,45 +36,42 @@ class CopyInclusive(FileSystem):
         folders = self.include.get("folders", [])
         self.message(f"include files : {files}")
         self.message(f"include folders : {folders}")
-
         return files, folders
 
     def copy_glob_matched(self, source_dir: str, export_dir: str, pattern: str, mode: CopyMode):
-        src_root = Path(source_dir)
-        dst_root = Path(export_dir)
+        src_root = Path(source_dir).resolve()
+        dst_root = Path(export_dir).resolve()
 
-        is_glob = any(ch in pattern for ch in ["*", "?", "["])
+        lock = get_path_lock(dst_root)
+        with lock:
+            is_glob = any(ch in pattern for ch in ["*", "?", "["])
 
-        # exact match under source_dir
-        if not is_glob:
-            target = src_root / pattern
+            if not is_glob:
+                target = src_root / pattern
+                if not target.exists():
+                    return
 
-            if (mode == CopyMode.FILE) and (target.is_file()):
                 dst_path = dst_root / pattern
-                dst_path.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(target, dst_path)
-
-            elif (mode == CopyMode.FOLDER) and (target.is_dir()):
-                dst_path = dst_root / pattern
-                shutil.copytree(target, dst_path, dirs_exist_ok=True)
-
-            return
-
-        # glob mode
-        for path in src_root.rglob("*"):
-            if (mode == CopyMode.FILE) and not (path.is_file()):
-                continue
-            if (mode == CopyMode.FOLDER) and not (path.is_dir()):
-                continue
-
-            rel_path = path.relative_to(src_root)
-
-            if rel_path.match(pattern):
-                dst_path = dst_root / rel_path
-
-                if mode == CopyMode.FILE:
+                if mode == CopyMode.FILE and target.is_file():
                     dst_path.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(path, dst_path)
+                    shutil.copy2(target, dst_path)
+                elif mode == CopyMode.FOLDER and target.is_dir():
+                    shutil.copytree(target, dst_path, dirs_exist_ok=True)
+                return
 
-                elif mode == CopyMode.FOLDER:
-                    shutil.copytree(path, dst_path, dirs_exist_ok=True)
+            adjusted_pattern = pattern
+            if pattern.startswith("**/"):
+                adjusted_pattern = f"*/*{pattern[3:]}"
+
+            for path in src_root.rglob("*"):
+                if (mode == CopyMode.FILE and not path.is_file()) or (mode == CopyMode.FOLDER and not path.is_dir()):
+                    continue
+
+                rel_path = path.relative_to(src_root)
+                if rel_path.match(pattern) or rel_path.match(adjusted_pattern):
+                    dst_path = dst_root / rel_path
+                    if mode == CopyMode.FILE:
+                        dst_path.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(path, dst_path)
+                    elif mode == CopyMode.FOLDER:
+                        shutil.copytree(path, dst_path, dirs_exist_ok=True)

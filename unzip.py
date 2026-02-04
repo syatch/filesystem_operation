@@ -1,9 +1,13 @@
+import os
 from pathlib import Path
+import shutil
+import tempfile
 import zipfile
 
 from flowweave import FlowWeaveResult
 
 from .file_system import FileSystem
+from .lock_manager import get_path_lock
 
 class Unzip(FileSystem):
     def operation_init(self):
@@ -19,12 +23,27 @@ class Unzip(FileSystem):
         else:
             zips = self.prev_future.get("data", {}).get("zips", [])
 
-        for dir in self.export_dir:
-            for zip in zips:
-                dst_root = self.unzip_file_from_source(self.source_dir, dir, zip)
-                self.message(f"unzip : {dst_root}")
+        for source_dir in self.source_dir:
+            for export_dir in self.export_dir:
+                for zip in zips:
+                    dst_root = self.unzip_file_from_source(source_dir, export_dir, zip)
+                    self.message(f"unzip : {dst_root}")
 
         return result
+
+    def _safe_extract(self, zf: zipfile.ZipFile, dest: Path):
+        dest = dest.resolve()
+        for member in zf.infolist():
+            member_path = (dest / member.filename).resolve()
+            if dest not in member_path.parents and member_path != dest:
+                raise RuntimeError(f"Unsafe path in zip: {member.filename}")
+            zf.extract(member, dest)
+
+    def _remove_path(p: Path):
+        if p.is_dir():
+            shutil.rmtree(p, ignore_errors=False)
+        else:
+            p.unlink(missing_ok=True)
 
     def unzip_file_from_source(self, source_dir: str, export_dir: str, zip_name: str) -> Path:
         src_root = Path(source_dir).resolve()
@@ -36,7 +55,21 @@ class Unzip(FileSystem):
 
         dst_root.mkdir(parents=True, exist_ok=True)
 
-        with zipfile.ZipFile(zip_path, "r") as zf:
-            zf.extractall(dst_root)
+        lock = get_path_lock(dst_root)
+
+        with lock:
+            with tempfile.TemporaryDirectory(dir=dst_root) as tmp_dir:
+                tmp_path = Path(tmp_dir)
+
+                with zipfile.ZipFile(zip_path, "r") as zf:
+                    self._safe_extract(zf, tmp_path)
+
+                for item in tmp_path.iterdir():
+                    target = dst_root / item.name
+
+                    if target.exists():
+                        self._remove_path(target)
+
+                    os.replace(item, target)
 
         return dst_root

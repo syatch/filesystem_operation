@@ -1,8 +1,10 @@
+import os
 from pathlib import Path
 
 from flowweave import FlowWeaveResult
 
 from .file_system import FileSystem
+from .lock_manager import get_path_lock
 
 class Replace(FileSystem):
     def operation_init(self):
@@ -14,9 +16,13 @@ class Replace(FileSystem):
 
         files = self.replace.get("files", [])
         files = files if isinstance(files, list) else [files]
-        for file in files:
-            self.replace_in_file(self.source_dir, file, self.replace.get("from_str"), self.replace.get("to_str"))
-            self.message(f"modify : {file}")
+        from_str = self.replace.get("from_str")
+        to_str = self.replace.get("to_str")
+
+        for source_dir in self.source_dir:
+            for file in files:
+                self.replace_in_file(source_dir, file, from_str, to_str)
+                self.message(f"modify : {file}")
 
         return result
 
@@ -30,11 +36,15 @@ class Replace(FileSystem):
         if not target.exists() or not target.is_file():
             return False
 
-        text = target.read_text(encoding=encoding)
+        lock = get_path_lock(target)
+        with lock:
+            text = target.read_text(encoding=encoding)
 
-        if from_str not in text:
-            return False
+            if from_str not in text:
+                return False
 
-        text = text.replace(from_str, to_str)
-        target.write_text(text, encoding=encoding)
+            tmp_path = target.with_suffix(target.suffix + ".tmp")
+            tmp_path.write_text(text.replace(from_str, to_str), encoding=encoding)
+            os.replace(tmp_path, target)
+
         return True
