@@ -19,6 +19,9 @@ class Zip(FileSystem):
 
         compress_level = self.zip.get("level", 5)
 
+        if 0 == len(self.export_dir):
+            self.export_dir = [str(Path(dir).parent) for dir in self.source_dir]
+
         for source_dir in self.source_dir:
             for export_dir in self.export_dir:
                 self.message(f"zip : {source_dir} - > export_dir")

@@ -51,6 +51,12 @@ class CopyExclusive(FileSystem):
             file_patterns = [(p, is_glob(p)) for p in exclude_files]
             dir_patterns  = [(p, is_glob(p)) for p in exclude_dirs]
 
+            adjusted_file_patterns = []
+            for pat, glob_mode in file_patterns:
+                adjusted_file_patterns.append((pat, glob_mode))
+                if glob_mode and pat.startswith("**/"):
+                    adjusted_file_patterns.append((pat[3:], False))
+
             adjusted_dir_patterns = []
             for pat, glob_mode in dir_patterns:
                 adjusted_dir_patterns.append((pat, glob_mode))
@@ -63,7 +69,7 @@ class CopyExclusive(FileSystem):
                         if rel_path.match(pat):
                             return True
                     else:
-                        if rel_path.as_posix() == pat:
+                        if str(rel_path.as_posix()) == pat:
                             return True
                 return False
 
@@ -81,7 +87,7 @@ class CopyExclusive(FileSystem):
 
                 for f in files:
                     rel_file = rel_root / f
-                    if match(rel_file, file_patterns):
+                    if match(rel_file, adjusted_file_patterns):
                         continue
 
                     src_file = root_path / f
