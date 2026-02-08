@@ -12,25 +12,35 @@ class RemoveMode(IntEnum):
     FILE = 0
     FOLDER = 1
 
+class RemoveCfg():
+    def __init__(self):
+        self.files = []
+        self.folders = []
+
 class Remove(FileSystem):
     def operation_init(self):
-        self.remove = {}
+        self.remove = RemoveCfg()
 
     def operation(self):
         result = FlowWeaveResult.SUCCESS
         self.message(f"source : {self.source_dir}")
 
+        self.prepare_options()
+
         for source_dir in self.source_dir:
             self.message(f"Remove: {source_dir}")
-            files, folders = self.get_target()
-            for file in files:
+            for file in self.remove.files:
                 self.message(f"- file: {file}")
                 self.delete_path_in_source(source_dir, file, RemoveMode.FILE)
-            for folder in folders:
+            for folder in self.remove.folders:
                 self.message(f"- folder: {folder}")
                 self.delete_path_in_source(source_dir, folder, RemoveMode.FOLDER)
 
         return result
+
+    def prepare_options(self):
+        self.remove.files = self.remove.files if isinstance(self.remove.files, list) else [self.remove.files]
+        self.remove.folders = self.remove.folders if isinstance(self.remove.folders, list) else [self.remove.folders]
 
     def delete_path_in_source(self, source_dir: str, target_name: str, mode: RemoveMode) -> bool:
         src_root = Path(source_dir).resolve()
@@ -59,11 +69,3 @@ class Remove(FileSystem):
                 return False
 
         return False
-
-    def get_target(self) -> Tuple[list, list]:
-        files = self.remove.get("files", [])
-        folders = self.remove.get("folders", [])
-        self.message(f"remove files : {files}")
-        self.message(f"remove folders : {folders}")
-
-        return files, folders

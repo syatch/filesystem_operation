@@ -8,16 +8,18 @@ from flowweave import FlowWeaveResult
 from .file_system import FileSystem
 from .lock_manager import get_path_lock
 
+class ZipCfg():
+    def __init__(self):
+        self.level = 5
+
 class Zip(FileSystem):
     def operation_init(self):
-        self.zip = {}
+        self.zip = ZipCfg()
 
     def operation(self):
         result = FlowWeaveResult.SUCCESS
         self.message(f"source : {self.source_dir}")
         self.message(f"export : {self.export_dir}")
-
-        compress_level = self.zip.get("level", 5)
 
         if 0 == len(self.export_dir):
             self.export_dir = [str(Path(dir).parent) for dir in self.source_dir]
@@ -25,7 +27,7 @@ class Zip(FileSystem):
         for source_dir in self.source_dir:
             for export_dir in self.export_dir:
                 self.message(f"zip : {source_dir} - > export_dir")
-                self.zip_source_dir(source_dir, export_dir, compress_level)
+                self.zip_source_dir(source_dir, export_dir, self.zip.level)
 
         return result
 

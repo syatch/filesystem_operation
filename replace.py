@@ -6,26 +6,33 @@ from flowweave import FlowWeaveResult
 from .file_system import FileSystem
 from .lock_manager import get_path_lock
 
+class ReplaceCfg():
+    def __init__(self):
+        self.files = []
+        self.from_str = None
+        self.to_str = None
+
 class Replace(FileSystem):
     def operation_init(self):
-        self.replace = None
+        self.replace = ReplaceCfg()
 
     def operation(self):
         result = FlowWeaveResult.SUCCESS
         self.message(f"source : {self.source_dir}")
 
-        files = self.replace.get("files", [])
-        files = files if isinstance(files, list) else [files]
-        from_str = self.replace.get("from_str")
-        to_str = self.replace.get("to_str")
+        self.prepare_options()
 
+        files = files if isinstance(files, list) else [files]
         for source_dir in self.source_dir:
             self.message(f"Replace: {source_dir}")
             for file in files:
                 self.message(f"- file: {file}")
-                self.replace_in_file(source_dir, file, from_str, to_str)
+                self.replace_in_file(source_dir, file, self.replace.from_str, self.replace.to_str)
 
         return result
+
+    def prepare_options(self):
+        self.replace.files = self.replace.files if isinstance(self.replace.files, list) else [self.replace.files]
 
     def replace_in_file(self, source_dir: str, relative_path: str, from_str: str, to_str: str, encoding="utf-8") -> bool:
         src_root = Path(source_dir).resolve()

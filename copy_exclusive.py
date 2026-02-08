@@ -13,29 +13,32 @@ class CopyMode(IntEnum):
     FILE = 0
     FOLDER = 1
 
+class CopyExclusiveCfg():
+    def __init__(self):
+        self.files = []
+        self.folders = []
+
 class CopyExclusive(FileSystem):
     def operation_init(self):
-        self.exclude = {}
+        self.exclude = CopyExclusiveCfg()
 
     def operation(self):
         result = FlowWeaveResult.SUCCESS
         self.message(f"source : {self.source_dir}")
         self.message(f"export : {self.export_dir}")
 
-        files, folders = self.get_target()
+        self.prepare_options()
+
         for source_dir in self.source_dir:
             for export_dir in self.export_dir:
                 self.message(f"Exclusive Copy: {source_dir} -> {export_dir}")
-                self.copy_not_matched(source_dir, export_dir, files, folders)
+                self.copy_not_matched(source_dir, export_dir, self.exclude.files, self.exclude.folders)
 
         return result
 
-    def get_target(self) -> Tuple[list, list]:
-        files = self.exclude.get("files", [])
-        folders = self.exclude.get("folders", [])
-        self.message(f"exclude files : {files}")
-        self.message(f"exclude folders : {folders}")
-        return files, folders
+    def prepare_options(self):
+        self.exclude.files = self.exclude.files if isinstance(self.exclude.files, list) else [self.exclude.files]
+        self.exclude.folders = self.exclude.folders if isinstance(self.exclude.folders, list) else [self.exclude.folders]
 
     def copy_not_matched(self, source_dir: str, export_dir: str,
                          exclude_files: list[str], exclude_dirs: list[str]):

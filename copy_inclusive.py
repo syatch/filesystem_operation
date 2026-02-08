@@ -13,32 +13,35 @@ class CopyMode(IntEnum):
     FILE = 0
     FOLDER = 1
 
+class CopyInclusiveCfg():
+    def __init__(self):
+        self.files = []
+        self.folders = []
+
 class CopyInclusive(FileSystem):
     def operation_init(self):
-        self.include = {}
+        self.include = CopyInclusiveCfg()
 
     def operation(self):
         result = FlowWeaveResult.SUCCESS
         self.message(f"source : {self.source_dir}")
         self.message(f"export : {self.export_dir}")
 
-        files, folders = self.get_target()
+        self.prepare_options()
+
         for source_dir in self.source_dir:
             for export_dir in self.export_dir:
                 self.message(f"Inclusive Copy: {source_dir} -> {export_dir}")
-                for file in files:
+                for file in self.include.files:
                     self.copy_glob_matched(source_dir, export_dir, file, CopyMode.FILE)
-                for folder in folders:
+                for folder in self.include.folders:
                     self.copy_glob_matched(source_dir, export_dir, folder, CopyMode.FOLDER)
 
         return result
 
-    def get_target(self) -> Tuple[list, list]:
-        files = self.include.get("files", [])
-        folders = self.include.get("folders", [])
-        self.message(f"include files : {files}")
-        self.message(f"include folders : {folders}")
-        return files, folders
+    def prepare_options(self):
+        self.include.files = self.include.files if isinstance(self.include.files, list) else [self.include.files]
+        self.include.folders = self.include.folders if isinstance(self.include.folders, list) else [self.include.folders]
 
     def copy_glob_matched(self, source_dir: str, export_dir: str, pattern: str, mode: CopyMode):
         src_root = Path(source_dir).resolve()
